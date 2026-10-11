@@ -1,6 +1,8 @@
 node_modules/
 .build/
 output/playwright/
+.playwright-cli/
+deliverables/
 .env*
 !.env.example
 *.log
