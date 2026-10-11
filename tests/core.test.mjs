@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {DEMO,validDate,amount,daysLate,balance,analyze,draft,parseCsv,exportCsv,csvCell} from '../core.js';
+test('strict dates, leap years and Russian format',()=>{assert.equal(validDate('2026-02-30'),null);assert.equal(validDate('2024-02-29'),'2024-02-29');assert.equal(validDate('29.02.2025'),null);assert.equal(validDate('11.10.2026'),'2026-10-11');});
+test('money supports decimal comma and rejects negative, exponent, overflow',()=>{assert.equal(amount('30 000,50 ₽'),30000.5);assert.equal(amount('-100'),null);assert.equal(amount('1e4'),null);assert.equal(amount('999999999999999999'),null);});
+test('partial payments and late days use the remaining balance',()=>{assert.equal(balance(DEMO[1]),66000);assert.equal(daysLate(DEMO[1]),4);assert.equal(daysLate(DEMO[5]),0);assert.equal(daysLate(DEMO[4]),0);});
+test('analysis quotes the actual request, handles promises and payment status',()=>{assert.equal(analyze(DEMO[0]).key,'document');assert.ok(DEMO[0].context.includes(analyze(DEMO[0]).evidence));assert.equal(analyze(DEMO[1]).promiseDate,'2026-10-15');assert.equal(analyze(DEMO[2]).key,'amount');assert.equal(analyze(DEMO[3]).key,'cash');assert.equal(analyze(DEMO[5]).key,'paid');});
+test('unknown cause stays unknown and drafts do not claim documents were sent',()=>{assert.equal(analyze({...DEMO[0],context:'Обсудили проект.'}).key,'unknown');assert.match(draft(DEMO[0]),/Подскажите/);assert.doesNotMatch(draft(DEMO[0]),/акт отправлен/i);});
+test('CSV round-trip retains multiline Cyrillic, quotes, partial payments',()=>{const data=[{...DEMO[0],context:'Строка 1; "акт"\nСтрока 2'},DEMO[1]];assert.deepEqual(parseCsv(exportCsv(data)),data);});
+test('CSV accepts Russian columns and decimal commas',()=>{const rows=parseCsv('номер;клиент;сумма;оплачено;срок\n12;Тест;1000,50;500;11.10.2026');assert.equal(rows[0].amount,1000.5);assert.equal(rows[0].due,'2026-10-11');});
+test('CSV rejects invalid dates, overpayments, duplicates and broken quoting',()=>{for(const s of ['id;client;amount;due_date\n1;A;100;2026-01-01','invoice_id;client;amount;paid;due_date\n1;A;100;101;2026-01-01','invoice_id;client;amount;due_date\n1;A;100;2026-02-30','invoice_id;client;amount;due_date\n1;A;100;2026-01-01\n1;A;100;2026-01-01','invoice_id;client;amount;due_date\n1;"A;100;2026-01-01'])assert.throws(()=>parseCsv(s));});
+test('spreadsheet formula injection is escaped on export',()=>{assert.equal(csvCell('=1+1'),'"\'=1+1"');assert.equal(csvCell('@SUM(1)'),'"\'@SUM(1)"');});

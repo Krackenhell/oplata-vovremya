@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f5f1">
+  <meta name="description" content="Рабочий MVP: контроль неоплаченных счетов, разбор переписки и подготовка следующего действия.">
+  <title>Оплата вовремя · Рабочий стол</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css">
+</head>
+<body>
+<aside class="sidebar">
+  <a class="brand" href="./" aria-label="Оплата вовремя, главная"><span class="brand-mark">о<span>в</span></span><span>оплата<br>вовремя</span></a>
+  <div class="workspace-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
+  <nav aria-label="Разделы"><button class="nav-item active" id="nav-invoices"><span>▤</span> Счета и оплаты <span class="nav-count" id="nav-count">6</span></button><button class="nav-item" id="nav-actions"><span>✓</span> Мои действия <span class="nav-count" id="action-count">0</span></button></nav>
+  <div class="sidebar-bottom"><span class="online-dot"></span> MVP 0.1 <p>Данные обрабатываются<br>в вашем браузере</p><a href="presentation.pdf" target="_blank" rel="noopener">Презентация проекта ↗</a><a href="https://github.com/Krackenhell/oplata-vovremya" target="_blank" rel="noopener">Исходный код ↗</a></div>
+</aside>
+<main>
+  <header class="topbar"><span>Рабочий стол <span class="slash">/</span> <span id="breadcrumb">Счета и оплаты</span></span><span class="avatar" title="Локальное рабочее пространство">ОВ</span></header>
+  <section class="page-header"><div><div class="eyebrow">КОНТРОЛЬ ОПЛАТ</div><h1 id="page-title">Деньги, которые<br>пора получить</h1><p id="page-subtitle">Найдите причину задержки и следующий шаг по каждому счёту.</p></div><div class="header-actions"><button class="button" id="export-btn">Выгрузить CSV</button><button class="button primary" id="import-btn">+ Загрузить счета</button></div></section>
+  <section class="demo-note" id="demo-note"><div><strong>Демонстрационные данные</strong><span> Компании и переписка вымышлены. Можно загрузить свой CSV.</span></div><button id="reset-btn" class="text-button">Начать заново ↻</button></section>
+  <section class="metrics" aria-label="Показатели задолженности"><div><span class="metric-label">Ожидаем оплату</span><strong id="total-balance"></strong><small id="open-count"></small></div><div><span class="metric-label">Уже просрочено</span><strong class="rust" id="late-balance"></strong><small id="late-count"></small></div><div><span class="metric-label">Есть зацепка в переписке</span><strong id="signal-count"></strong><small>Причину нужно подтвердить</small></div></section>
+  <section class="work-area"><div class="list-area"><div class="list-toolbar"><div class="filters" role="group" aria-label="Фильтр счетов"><button class="filter active" data-filter="all">Все счета</button><button class="filter" data-filter="late">Просрочены <span id="late-tab-count"></span></button><button class="filter" data-filter="paid">Оплачены</button></div><label class="asof-label">На дату <input type="date" id="asof" value="2026-10-11" aria-label="Дата расчёта просрочки"></label></div><label class="search"><span>⌕</span><input id="search" placeholder="Найти клиента или номер счёта" aria-label="Поиск по клиенту и номеру счёта"></label><div class="table-wrap"><table><thead><tr><th>Клиент / счёт</th><th>К оплате</th><th>Срок</th><th>Что известно</th></tr></thead><tbody id="invoice-list"></tbody></table></div><div id="empty" class="empty" hidden>По этому запросу счетов нет.</div><div class="table-footer"><span id="shown-count"></span><span>Суммы в рублях</span></div></div><aside class="detail" id="detail" aria-label="Карточка счёта"></aside></section>
+  <section class="actions-area" id="actions-area" hidden></section>
+  <footer class="page-footer"><span>Рабочий прототип. Банковские интеграции и языковая модель пока не подключены.</span><a href="README.md" target="_blank" rel="noopener">Возможности и ограничения ↗</a></footer>
+</main>
+<dialog id="import-dialog"><form id="import-form"><div class="dialog-head"><div><div class="eyebrow">ИМПОРТ ДАННЫХ</div><h2>Загрузить счета</h2></div><button type="button" class="icon-button" data-close="import-dialog" aria-label="Закрыть">×</button></div><p>CSV с разделителем «;» или «,». Импорт заменит текущий реестр и очистит действия. Файлы остаются в браузере.</p><a href="example.csv" download class="sample-link">↓ Скачать образец CSV</a><label class="file-drop">Выбрать CSV<input id="csv-file" type="file" accept=".csv,text/csv"></label><label class="field-label" for="csv-text">Или вставьте таблицу текстом</label><textarea id="csv-text" rows="7" placeholder="invoice_id;client;amount;paid;due_date;owner;context"></textarea><p class="hint">Обязательные поля: invoice_id, client, amount, due_date. Даты: ГГГГ-ММ-ДД или ДД.ММ.ГГГГ. Размер файла до 2 МБ.</p><p id="import-error" class="error" role="alert"></p><div class="dialog-footer"><button type="button" class="button" data-close="import-dialog">Отмена</button><button type="submit" class="button primary">Загрузить реестр</button></div></form></dialog>
+<dialog id="payment-dialog"><form id="payment-form"><div class="dialog-head"><h2>Учесть поступление</h2><button type="button" class="icon-button" data-close="payment-dialog" aria-label="Закрыть">×</button></div><p id="payment-hint"></p><label class="field-label" for="payment-amount">Сумма поступления, ₽</label><input id="payment-amount" inputmode="decimal" required placeholder="Например, 30 000"><p class="hint">Это ручная отметка в реестре. Сервис не проверяет банковский платёж.</p><p id="payment-error" class="error" role="alert"></p><div class="dialog-footer"><button type="submit" class="button primary">Сохранить поступление</button></div></form></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+<script type="module" src="app.js"></script>
+</body></html>
